@@ -16,11 +16,6 @@ on:
         required: false
         type: string
         default: ''
-      node_version:
-        description: 'Node.js version to use'
-        required: false
-        type: string
-        default: '22'
 
 jobs:
   playwright:
@@ -50,7 +45,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ inputs.node_version }}
+          node-version: 22
 
       - name: Get module name from repository
         id: module_info
@@ -74,7 +69,7 @@ jobs:
 
       - name: Enable modules
         working-directory: upstream
-        run: ddev drush en ${{ inputs.enabled_modules }} -y
+        run: ddev drush en du_functional_testing ${{ inputs.enabled_modules }} -y
 
       - name: Install test dependencies and generate roles
         working-directory: upstream/tests
