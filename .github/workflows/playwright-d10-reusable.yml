@@ -21,10 +21,6 @@ on:
         required: false
         type: string
         default: '22'
-    secrets:
-      GITHUB_TOKEN:
-        description: 'GitHub token for accessing drupal-composer-managed repository'
-        required: false
 
 jobs:
   playwright:
@@ -43,7 +39,7 @@ jobs:
         with:
           repository: DU-University-Relations/drupal-composer-managed
           path: upstream
-          token: ${{ secrets.GITHUB_TOKEN || github.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ inputs.profile_ref }}
 
       - name: Setup DDEV
