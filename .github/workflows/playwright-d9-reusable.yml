@@ -1,0 +1,102 @@
+name: Reusable Playwright Tests for D9
+
+on:
+  workflow_call:
+    inputs:
+      enabled_modules:
+        description: 'Space-separated list of modules to enable (e.g., "du_banners du_functional_testing")'
+        required: true
+        type: string
+      test_tags:
+        description: 'Playwright test tags to run (e.g., "@banners")'
+        required: true
+        type: string
+      profile_ref:
+        description: 'Optional ref (branch/tag/SHA) of d9-composer-managed to use'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      D9_PROFILE_PAT:
+        description: 'Personal access token for d9-composer-managed repository'
+        required: true
+
+jobs:
+  playwright:
+    runs-on: ubuntu-22.04
+    env:
+      PLAYWRIGHT_BASE_URL: https://d9-composer-managed.ddev.site
+
+    steps:
+      - name: Checkout module
+        uses: actions/checkout@v4
+        with:
+          path: module
+
+      - name: Checkout the Drupal upstream
+        uses: actions/checkout@v4
+        with:
+          repository: DU-University-Relations/d9-composer-managed
+          path: upstream
+          token: ${{ secrets.D9_PROFILE_PAT }}
+          ref: ${{ inputs.profile_ref }}
+
+      - name: Setup DDEV
+        uses: ddev/github-action-setup-ddev@v1
+        with:
+          ddevDir: upstream
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Get module name from repository
+        id: module_info
+        run: |
+          MODULE_NAME=$(basename ${{ github.repository }})
+          echo "module_name=$MODULE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Copy module to upstream
+        run: |
+          DEST_MODULE_DIR="$GITHUB_WORKSPACE/upstream/web/modules/packages/${{ steps.module_info.outputs.module_name }}"
+          mkdir -p "$DEST_MODULE_DIR"
+          cp -r "$GITHUB_WORKSPACE/module/"* "$DEST_MODULE_DIR/"
+
+      - name: Install PHP dependencies
+        working-directory: upstream
+        run: ddev composer install --no-interaction --prefer-dist
+
+      - name: Install Drupal using ducore profile
+        working-directory: upstream
+        run: ddev drush si ducore -y
+
+      - name: Enable modules
+        working-directory: upstream
+        run: ddev drush en du_functional_testing ${{ inputs.enabled_modules }} -y
+
+      - name: Install test dependencies and generate roles
+        working-directory: upstream/tests
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+          npm run generate-roles || true
+
+      - name: Install Playwright browsers (CI)
+        working-directory: upstream
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        working-directory: upstream
+        run: npx playwright test --grep "${{ inputs.test_tags }}"
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-d9
+          path: upstream/tests/playwright-report
+          if-no-files-found: ignore
