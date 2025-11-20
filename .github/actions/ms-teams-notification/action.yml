@@ -38,55 +38,77 @@ runs:
     - name: Send MS Teams notification
       shell: bash
       run: |
-        curl -H "Content-Type: application/json" -d '{
-          "type": "message",
-          "attachments": [{
-            "contentType": "application/vnd.microsoft.card.adaptive",
-            "content": {
-              "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-              "type": "AdaptiveCard",
-              "version": "1.4",
-              "body": [
-                {
-                  "type": "TextBlock",
-                  "text": "'"${{ inputs.title }}"'",
-                  "weight": "Bolder",
-                  "size": "Large",
-                  "color": "Attention"
-                },
-                {
-                  "type": "FactSet",
-                  "facts": [
-                    {
-                      "title": "Repository:",
-                      "value": "'"${{ inputs.github-repository }}"'"
-                    },
-                    {
-                      "title": "Branch:",
-                      "value": "'"${{ inputs.github-ref-name }}"'"
-                    },
-                    {
-                      "title": "Commit:",
-                      "value": "'"${{ inputs.github-sha }}"'"
-                    },
-                    {
-                      "title": "Triggered by:",
-                      "value": "'"${{ inputs.github-actor }}"'"
-                    },
-                    {
-                      "title": "Workflow:",
-                      "value": "'"${{ inputs.github-workflow }}"'"
-                    }
-                  ]
-                }
-              ],
-              "actions": [
-                {
-                  "type": "Action.OpenUrl",
-                  "title": "View Failed Run",
-                  "url": "'"${{ inputs.github-server-url }}/${{ inputs.github-repository }}/actions/runs/${{ inputs.github-run-id }}"'"
-                }
-              ]
-            }
-          }]
-        }' "${{ inputs.webhook-url }}"
+        # Create JSON payload using jq for proper escaping
+        PAYLOAD=$(jq -n \
+          --arg title "${{ inputs.title }}" \
+          --arg repo "${{ inputs.github-repository }}" \
+          --arg branch "${{ inputs.github-ref-name }}" \
+          --arg sha "${{ inputs.github-sha }}" \
+          --arg actor "${{ inputs.github-actor }}" \
+          --arg workflow "${{ inputs.github-workflow }}" \
+          --arg url "${{ inputs.github-server-url }}/${{ inputs.github-repository }}/actions/runs/${{ inputs.github-run-id }}" \
+          '{
+            "type": "message",
+            "attachments": [{
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "content": {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "type": "AdaptiveCard",
+                "version": "1.4",
+                "body": [
+                  {
+                    "type": "TextBlock",
+                    "text": $title,
+                    "weight": "Bolder",
+                    "size": "Large",
+                    "color": "Attention"
+                  },
+                  {
+                    "type": "FactSet",
+                    "facts": [
+                      {
+                        "title": "Repository:",
+                        "value": $repo
+                      },
+                      {
+                        "title": "Branch:",
+                        "value": $branch
+                      },
+                      {
+                        "title": "Commit:",
+                        "value": $sha
+                      },
+                      {
+                        "title": "Triggered by:",
+                        "value": $actor
+                      },
+                      {
+                        "title": "Workflow:",
+                        "value": $workflow
+                      }
+                    ]
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "Action.OpenUrl",
+                    "title": "View Failed Run",
+                    "url": $url
+                  }
+                ]
+              }
+            }]
+          }')
+        
+        # Send notification with error handling
+        HTTP_CODE=$(curl --fail --silent --show-error --write-out "%{http_code}" --output /dev/null \
+          -H "Content-Type: application/json" \
+          -d "$PAYLOAD" \
+          "${{ inputs.webhook-url }}")
+        
+        if [ "$HTTP_CODE" -ne 200 ]; then
+          echo "Failed to send MS Teams notification (HTTP $HTTP_CODE)"
+          exit 1
+        fi
+        
+        echo "MS Teams notification sent successfully"
