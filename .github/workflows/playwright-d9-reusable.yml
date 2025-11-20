@@ -100,3 +100,9 @@ jobs:
           name: playwright-report-d9
           path: upstream/tests/playwright-report
           if-no-files-found: ignore
+
+      - name: Notify MS Teams on failure
+        if: failure()
+        uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
+        with:
+          webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
