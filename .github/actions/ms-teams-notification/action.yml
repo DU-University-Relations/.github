@@ -1,0 +1,92 @@
+name: 'MS Teams Notification'
+description: 'Send adaptive card notification to MS Teams webhook'
+author: 'DU University Relations'
+
+inputs:
+  webhook-url:
+    description: 'MS Teams webhook URL'
+    required: true
+  title:
+    description: 'Notification title'
+    required: false
+    default: '❌ Playwright Tests Failed'
+  github-repository:
+    description: 'GitHub repository (usually ${{ github.repository }})'
+    required: true
+  github-ref-name:
+    description: 'GitHub branch/ref name (usually ${{ github.ref_name }})'
+    required: true
+  github-sha:
+    description: 'GitHub commit SHA (usually ${{ github.sha }})'
+    required: true
+  github-actor:
+    description: 'GitHub actor who triggered the workflow (usually ${{ github.actor }})'
+    required: true
+  github-workflow:
+    description: 'GitHub workflow name (usually ${{ github.workflow }})'
+    required: true
+  github-server-url:
+    description: 'GitHub server URL (usually ${{ github.server_url }})'
+    required: true
+  github-run-id:
+    description: 'GitHub run ID (usually ${{ github.run_id }})'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Send MS Teams notification
+      shell: bash
+      run: |
+        curl -H "Content-Type: application/json" -d '{
+          "type": "message",
+          "attachments": [{
+            "contentType": "application/vnd.microsoft.card.adaptive",
+            "content": {
+              "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+              "type": "AdaptiveCard",
+              "version": "1.4",
+              "body": [
+                {
+                  "type": "TextBlock",
+                  "text": "'"${{ inputs.title }}"'",
+                  "weight": "Bolder",
+                  "size": "Large",
+                  "color": "Attention"
+                },
+                {
+                  "type": "FactSet",
+                  "facts": [
+                    {
+                      "title": "Repository:",
+                      "value": "'"${{ inputs.github-repository }}"'"
+                    },
+                    {
+                      "title": "Branch:",
+                      "value": "'"${{ inputs.github-ref-name }}"'"
+                    },
+                    {
+                      "title": "Commit:",
+                      "value": "'"${{ inputs.github-sha }}"'"
+                    },
+                    {
+                      "title": "Triggered by:",
+                      "value": "'"${{ inputs.github-actor }}"'"
+                    },
+                    {
+                      "title": "Workflow:",
+                      "value": "'"${{ inputs.github-workflow }}"'"
+                    }
+                  ]
+                }
+              ],
+              "actions": [
+                {
+                  "type": "Action.OpenUrl",
+                  "title": "View Failed Run",
+                  "url": "'"${{ inputs.github-server-url }}/${{ inputs.github-repository }}/actions/runs/${{ inputs.github-run-id }}"'"
+                }
+              ]
+            }
+          }]
+        }' "${{ inputs.webhook-url }}"
