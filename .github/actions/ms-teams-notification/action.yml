@@ -71,7 +71,7 @@ runs:
                 "actions": [
                   {
                     "type": "Action.OpenUrl",
-                    "title": "View Failed Run",
+                    "title": "View Workflow Run",
                     "url": $url
                   }
                 ]
