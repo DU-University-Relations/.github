@@ -5,8 +5,8 @@ A reusable GitHub Action to send adaptive card notifications to Microsoft Teams 
 ## Features
 
 - Sends rich adaptive card notifications to MS Teams
-- Includes repository, branch, commit, actor, and workflow information
-- Provides direct link to the failed workflow run
+- Automatically includes repository, branch, commit, actor, and workflow information from GitHub context
+- Provides direct link to the workflow run
 - Configurable title and webhook URL
 - Easy to integrate into existing workflows
 
@@ -16,13 +16,6 @@ A reusable GitHub Action to send adaptive card notifications to Microsoft Teams 
 |-------|-------------|----------|---------|
 | `webhook-url` | MS Teams webhook URL | Yes | - |
 | `title` | Notification title | No | `❌ Playwright Tests Failed` |
-| `github-repository` | GitHub repository name | Yes | - |
-| `github-ref-name` | Branch/ref name | Yes | - |
-| `github-sha` | Commit SHA | Yes | - |
-| `github-actor` | User who triggered the workflow | Yes | - |
-| `github-workflow` | Workflow name | Yes | - |
-| `github-server-url` | GitHub server URL | Yes | - |
-| `github-run-id` | Workflow run ID | Yes | - |
 
 ## Usage
 
@@ -36,13 +29,6 @@ If your organization has the `MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL` secret confi
   uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
   with:
     webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
-    github-repository: ${{ github.repository }}
-    github-ref-name: ${{ github.ref_name }}
-    github-sha: ${{ github.sha }}
-    github-actor: ${{ github.actor }}
-    github-workflow: ${{ github.workflow }}
-    github-server-url: ${{ github.server_url }}
-    github-run-id: ${{ github.run_id }}
 ```
 
 ### Usage with Custom Webhook URL
@@ -55,13 +41,6 @@ If you want to use a different webhook URL (e.g., repository-specific):
   uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
   with:
     webhook-url: ${{ secrets.CUSTOM_TEAMS_WEBHOOK }}
-    github-repository: ${{ github.repository }}
-    github-ref-name: ${{ github.ref_name }}
-    github-sha: ${{ github.sha }}
-    github-actor: ${{ github.actor }}
-    github-workflow: ${{ github.workflow }}
-    github-server-url: ${{ github.server_url }}
-    github-run-id: ${{ github.run_id }}
 ```
 
 ### Usage with Custom Title
@@ -75,13 +54,6 @@ Customize the notification title for different scenarios:
   with:
     webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
     title: "🔨 Build Failed"
-    github-repository: ${{ github.repository }}
-    github-ref-name: ${{ github.ref_name }}
-    github-sha: ${{ github.sha }}
-    github-actor: ${{ github.actor }}
-    github-workflow: ${{ github.workflow }}
-    github-server-url: ${{ github.server_url }}
-    github-run-id: ${{ github.run_id }}
 ```
 
 ### Complete Workflow Example
@@ -120,13 +92,6 @@ jobs:
         uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
         with:
           webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
-          github-repository: ${{ github.repository }}
-          github-ref-name: ${{ github.ref_name }}
-          github-sha: ${{ github.sha }}
-          github-actor: ${{ github.actor }}
-          github-workflow: ${{ github.workflow }}
-          github-server-url: ${{ github.server_url }}
-          github-run-id: ${{ github.run_id }}
 
       - name: Upload test results
         if: always()
