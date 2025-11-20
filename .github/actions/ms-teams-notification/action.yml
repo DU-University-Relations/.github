@@ -1,0 +1,93 @@
+name: 'MS Teams Notification'
+description: 'Send adaptive card notification to MS Teams webhook'
+author: 'DU University Relations'
+
+inputs:
+  webhook-url:
+    description: 'MS Teams webhook URL'
+    required: true
+  title:
+    description: 'Notification title'
+    required: false
+    default: '❌ Playwright Tests Failed'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Send MS Teams notification
+      shell: bash
+      run: |
+        # Create JSON payload using jq for proper escaping
+        PAYLOAD=$(jq -n \
+          --arg title "${{ inputs.title }}" \
+          --arg repo "${{ github.repository }}" \
+          --arg branch "${{ github.ref_name }}" \
+          --arg sha "${{ github.sha }}" \
+          --arg actor "${{ github.actor }}" \
+          --arg workflow "${{ github.workflow }}" \
+          --arg url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+          '{
+            "type": "message",
+            "attachments": [{
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "content": {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "type": "AdaptiveCard",
+                "version": "1.4",
+                "body": [
+                  {
+                    "type": "TextBlock",
+                    "text": $title,
+                    "weight": "Bolder",
+                    "size": "Large",
+                    "color": "Attention"
+                  },
+                  {
+                    "type": "FactSet",
+                    "facts": [
+                      {
+                        "title": "Repository:",
+                        "value": $repo
+                      },
+                      {
+                        "title": "Branch:",
+                        "value": $branch
+                      },
+                      {
+                        "title": "Commit:",
+                        "value": $sha
+                      },
+                      {
+                        "title": "Triggered by:",
+                        "value": $actor
+                      },
+                      {
+                        "title": "Workflow:",
+                        "value": $workflow
+                      }
+                    ]
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "Action.OpenUrl",
+                    "title": "View Workflow Run",
+                    "url": $url
+                  }
+                ]
+              }
+            }]
+          }')
+        
+        # Send notification with error handling
+        HTTP_CODE=$(curl --fail --silent --show-error --write-out "%{http_code}" --output /dev/null \
+          -H "Content-Type: application/json" \
+          -d "$PAYLOAD" \
+          "${{ inputs.webhook-url }}")
+        
+        if [ "$HTTP_CODE" -ne 200 ]; then
+          echo "Failed to send MS Teams notification (HTTP $HTTP_CODE)"
+          exit 1
+        fi
+        
+        echo "MS Teams notification sent successfully"
