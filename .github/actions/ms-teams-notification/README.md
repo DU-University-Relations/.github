@@ -101,6 +101,45 @@ jobs:
           path: playwright-report/
 ```
 
+## Workflow Conditions
+
+The action has **no conditions built into it**. Users specify the condition when they use it, giving you full flexibility over when notifications are sent.
+
+### Common Condition Examples
+
+```yaml
+# Only notify on failure
+- name: Notify MS Teams on failure
+  if: failure()
+  uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
+  with:
+    webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
+
+# Always notify regardless of success/failure
+- name: Notify MS Teams
+  if: always()
+  uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
+  with:
+    webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
+    title: "Workflow Completed"
+
+# Only notify on success
+- name: Notify MS Teams on success
+  if: success()
+  uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
+  with:
+    webhook-url: ${{ secrets.MS_TEAMS_WEBHOOK }}
+    title: "✅ Tests Passed"
+```
+
+### Why This Approach is Best
+
+- **Flexibility** - Users can decide when to trigger notifications based on their needs
+- **Reusability** - Same action works for failures, successes, or always
+- **Standard GitHub Actions pattern** - This is how most reusable actions work
+
+The action itself just sends the notification whenever it runs. The calling workflow controls when it runs using the `if:` condition.
+
 ## Configuration
 
 ### Setting up the Webhook URL Secret
