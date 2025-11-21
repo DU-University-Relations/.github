@@ -98,6 +98,8 @@ jobs:
         shell: bash
         run: |
           # Use the github reporter and capture output with tee
+          # Disable errexit and pipefail to capture exit code properly
+          set +e +o pipefail
           npx playwright test --reporter=github --grep "${{ inputs.test_tags }}" 2>&1 | tee test.log
           echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         continue-on-error: true
@@ -148,3 +150,7 @@ jobs:
           name: playwright-report-d9
           path: upstream/tests/playwright-report
           if-no-files-found: ignore
+
+      - name: Fail job if tests failed
+        if: steps.playwright.outputs.exit_code != '0'
+        run: exit 1
