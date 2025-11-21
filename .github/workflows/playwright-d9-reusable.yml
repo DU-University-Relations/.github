@@ -90,8 +90,40 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
+        id: playwright
         working-directory: upstream
-        run: npx playwright test --grep "${{ inputs.test_tags }}"
+        shell: bash
+        run: |
+          # Use the github reporter and capture output with tee
+          npx playwright test --reporter=github --grep "${{ inputs.test_tags }}" 2>&1 | tee test.log
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Extract Failure Message
+        id: extract
+        if: steps.playwright.outputs.exit_code != '0'
+        run: |
+          # Extract the first error annotation from the log
+          ERROR_MSG=$(grep "^::error" upstream/test.log | sed -E 's/^::error[^:]*:://' | head -n 1)
+          
+          # Fallback if no error found
+          if [ -z "$ERROR_MSG" ]; then
+            ERROR_MSG="Tests failed, but no specific error annotation was found."
+          fi
+          
+          echo "Captured Error: $ERROR_MSG"
+          
+          # Write to output using multiline syntax
+          echo "error_message<<EOF" >> $GITHUB_OUTPUT
+          echo "$ERROR_MSG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Notify MS Teams on failure
+        if: steps.playwright.outputs.exit_code != '0'
+        uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
+        with:
+          webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
+          failure-info: ${{ steps.extract.outputs.error_message }}
 
       - name: Upload Playwright report
         if: always()
