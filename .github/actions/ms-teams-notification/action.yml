@@ -10,10 +10,6 @@ inputs:
     description: 'Notification title'
     required: false
     default: '❌ Playwright Tests Failed'
-  failure-info:
-    description: 'Optional failure information (job name, failed steps, etc.)'
-    required: false
-    default: ''
 
 runs:
   using: 'composite'
@@ -24,19 +20,11 @@ runs:
         # Use head_ref for PR source branch (this action is designed for PRs)
         BRANCH="${{ github.head_ref }}"
         
-        # Use provided failure info or default message
-        if [ -n "${{ inputs.failure-info }}" ]; then
-          FAILURE_INFO="${{ inputs.failure-info }}"
-        else
-          FAILURE_INFO="Job: ${{ github.job }}"
-        fi
-        
         # Create JSON payload using jq for proper escaping
         PAYLOAD=$(jq -n \
           --arg title "${{ inputs.title }}" \
           --arg repo "${{ github.repository }}" \
           --arg branch "$BRANCH" \
-          --arg failure "$FAILURE_INFO" \
           --arg actor "${{ github.actor }}" \
           --arg workflow "${{ github.workflow }}" \
           --arg url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
@@ -66,10 +54,6 @@ runs:
                       {
                         "title": "Branch:",
                         "value": $branch
-                      },
-                      {
-                        "title": "Failure Info:",
-                        "value": $failure
                       },
                       {
                         "title": "Triggered by:",
