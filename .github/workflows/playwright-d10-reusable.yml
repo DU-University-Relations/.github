@@ -105,7 +105,7 @@ jobs:
         working-directory: upstream
         run: |
           # Extract the first error annotation from the log
-          ERROR_MSG=$(grep "^::error" test.log | sed -E 's/^::error[^:]*:://' | head -n 1)
+          ERROR_MSG=$(grep "^::error" test.log | sed -E 's/^::error.*:://' | head -n 1)
           
           # Fallback if no error found
           if [ -z "$ERROR_MSG" ]; then
