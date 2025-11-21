@@ -78,6 +78,53 @@ You can pass custom failure information to provide more context:
     failure-info: "Tests failed in ${{ github.job }}"
 ```
 
+### Advanced: Capturing Playwright Error Details
+
+For Playwright tests, you can capture specific error messages using the `github` reporter and pass them to the notification:
+
+```yaml
+- name: Run Playwright Tests
+  id: playwright
+  shell: bash
+  run: |
+    # Use the github reporter and capture output with tee
+    npx playwright test --reporter=github 2>&1 | tee test.log
+    echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+  continue-on-error: true
+
+- name: Extract Failure Message
+  id: extract
+  if: steps.playwright.outputs.exit_code != '0'
+  run: |
+    # Extract the first error annotation from the log
+    ERROR_MSG=$(grep "^::error" test.log | sed -E 's/^::error.*:://' | head -n 1)
+    
+    # Fallback if no error found
+    if [ -z "$ERROR_MSG" ]; then
+      ERROR_MSG="Tests failed, but no specific error annotation was found."
+    fi
+    
+    echo "Captured Error: $ERROR_MSG"
+    
+    # Write to output using multiline syntax
+    echo "error_message<<EOF" >> $GITHUB_OUTPUT
+    echo "$ERROR_MSG" >> $GITHUB_OUTPUT
+    echo "EOF" >> $GITHUB_OUTPUT
+
+- name: Notify MS Teams on failure
+  if: steps.playwright.outputs.exit_code != '0'
+  uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
+  with:
+    webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
+    failure-info: ${{ steps.extract.outputs.error_message }}
+```
+
+This approach:
+- Uses Playwright's built-in `github` reporter which emits `::error` annotations
+- Captures the test output with `tee` so it's both displayed and saved
+- Extracts the first error message from the annotations
+- Passes the specific error to the MS Teams notification
+
 ### Complete Workflow Example
 
 Here's a complete example showing how to integrate this action into your workflow:
