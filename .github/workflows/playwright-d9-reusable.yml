@@ -22,7 +22,7 @@ on:
         required: true
       MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL:
         description: 'MS Teams webhook URL for failure notifications'
-        required: true
+        required: false
 
 jobs:
   playwright:
@@ -107,11 +107,19 @@ jobs:
         if: steps.playwright.outputs.exit_code != '0'
         working-directory: upstream
         run: |
-          # Extract the first error annotation from the log
-          ERROR_MSG=$(grep "^::error" test.log | sed -E 's/^::error.*:://' | head -n 1)
+          # Extract the first error annotation from the log, keeping file name
+          ERROR_LINE=$(grep "^::error" test.log | head -n 1)
           
-          # Fallback if no error found
-          if [ -z "$ERROR_MSG" ]; then
+          if [ -n "$ERROR_LINE" ]; then
+            # Try to extract with file pattern first
+            ERROR_MSG=$(echo "$ERROR_LINE" | sed -E 's/^::error file=([^,]+).*::(.*)/\1: \2/')
+            
+            # If pattern didn't match (still starts with ::error), use simple extraction
+            if [[ "$ERROR_MSG" == "::error"* ]]; then
+              ERROR_MSG=$(echo "$ERROR_LINE" | sed -E 's/^::error:://')
+            fi
+          else
+            # Fallback if no error found
             ERROR_MSG="Tests failed, but no specific error annotation was found."
           fi
           
@@ -123,7 +131,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Notify MS Teams on failure
-        if: steps.playwright.outputs.exit_code != '0'
+        if: steps.playwright.outputs.exit_code != '0' && secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL != ''
         uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
         with:
           webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
