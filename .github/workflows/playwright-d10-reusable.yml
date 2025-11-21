@@ -90,18 +90,11 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
-        id: playwright
         working-directory: upstream
-        shell: bash
-        run: |
-          # Disable errexit and pipefail to capture exit code properly
-          set +e +o pipefail
-          npx playwright test --reporter=github --grep "${{ inputs.test_tags }}"
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
-        continue-on-error: true
+        run: npx playwright test --reporter=github --grep "${{ inputs.test_tags }}"
 
       - name: Notify MS Teams on failure
-        if: steps.playwright.outputs.exit_code != '0' && env.WEBHOOK_URL != ''
+        if: failure() && env.WEBHOOK_URL != ''
         env:
           WEBHOOK_URL: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
         uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
@@ -115,7 +108,3 @@ jobs:
           name: playwright-report-d10
           path: upstream/tests/playwright-report
           if-no-files-found: ignore
-
-      - name: Fail job if tests failed
-        if: steps.playwright.outputs.exit_code != '0'
-        run: exit 1
