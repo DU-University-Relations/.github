@@ -10,6 +10,10 @@ inputs:
     description: 'Notification title'
     required: false
     default: '❌ Playwright Tests Failed'
+  failure-info:
+    description: 'Optional failure information (job name, failed steps, etc.)'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -17,31 +21,14 @@ runs:
     - name: Send MS Teams notification
       shell: bash
       run: |
-        # Determine the branch name (use head_ref for PRs, ref_name otherwise)
+        # Use head_ref for PR source branch (this action is designed for PRs)
         BRANCH="${{ github.head_ref }}"
-        if [ -z "$BRANCH" ]; then
-          BRANCH="${{ github.ref_name }}"
-        fi
         
-        # Fetch job information to get failure details
-        FAILURE_INFO="No failure information available"
-        
-        # Use GitHub API to fetch job details
-        JOBS_RESPONSE=$(curl -s -H "Authorization: token ${{ github.token }}" \
-          -H "Accept: application/vnd.github+json" \
-          "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs")
-        
-        # Check if we got a valid response and extract failed job and step information
-        if [ -n "$JOBS_RESPONSE" ] && echo "$JOBS_RESPONSE" | jq -e '.jobs' >/dev/null 2>&1; then
-          FAILED_JOBS=$(echo "$JOBS_RESPONSE" | jq -r '.jobs[] | select(.conclusion == "failure") | 
-            "\(.name): " + (
-              [.steps[] | select(.conclusion == "failure") | .name] | 
-              if length > 0 then join(", ") else "Job failed" end
-            )')
-          
-          if [ -n "$FAILED_JOBS" ]; then
-            FAILURE_INFO="$FAILED_JOBS"
-          fi
+        # Use provided failure info or default message
+        if [ -n "${{ inputs.failure-info }}" ]; then
+          FAILURE_INFO="${{ inputs.failure-info }}"
+        else
+          FAILURE_INFO="Job: ${{ github.job }}"
         fi
         
         # Create JSON payload using jq for proper escaping

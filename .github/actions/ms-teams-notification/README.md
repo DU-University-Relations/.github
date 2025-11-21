@@ -1,13 +1,14 @@
 # MS Teams Notification Action
 
-A reusable GitHub Action to send adaptive card notifications to Microsoft Teams webhooks. This action is particularly useful for notifying teams about workflow failures or other important events.
+A reusable GitHub Action to send adaptive card notifications to Microsoft Teams webhooks. This action is designed specifically for pull request workflows and notifies teams about workflow failures or other important events.
 
 ## Features
 
 - Sends rich adaptive card notifications to MS Teams
-- Automatically includes repository, branch, failure information, actor, and workflow details from GitHub context
-- Shows the actual source branch for pull requests (not the merge branch)
-- Provides detailed failure information including which jobs and steps failed
+- Designed specifically for pull request workflows
+- Automatically includes repository, branch, failure information, actor, and workflow details
+- Shows the PR source branch
+- Provides detailed failure information (optionally passed as input)
 - Provides direct link to the workflow run
 - Configurable title and webhook URL
 - Easy to integrate into existing workflows
@@ -18,6 +19,7 @@ A reusable GitHub Action to send adaptive card notifications to Microsoft Teams 
 |-------|-------------|----------|---------|
 | `webhook-url` | MS Teams webhook URL | Yes | - |
 | `title` | Notification title | No | `❌ Playwright Tests Failed` |
+| `failure-info` | Optional failure information (job name, failed steps, etc.) | No | `Job: <job-name>` |
 
 ## Usage
 
@@ -56,6 +58,24 @@ Customize the notification title for different scenarios:
   with:
     webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
     title: "🔨 Build Failed"
+```
+
+### Usage with Custom Failure Information
+
+You can pass custom failure information to provide more context:
+
+```yaml
+- name: Run tests
+  id: tests
+  run: npm test
+  continue-on-error: true
+
+- name: Notify MS Teams on failure
+  if: steps.tests.outcome == 'failure'
+  uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
+  with:
+    webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
+    failure-info: "Tests failed in ${{ github.job }}"
 ```
 
 ### Complete Workflow Example
@@ -172,24 +192,22 @@ The webhook URL should be stored as a secret in your repository or organization:
 The notification card includes the following information:
 
 - **Repository**: The repository where the workflow is running (e.g., `DU-University-Relations/drupal-composer-managed`)
-- **Branch**: The source branch of the pull request (for PRs) or the branch name (for push events)
-  - For pull requests, shows the actual PR branch (e.g., `feature-branch`) instead of the merge branch
-  - For direct pushes, shows the branch name (e.g., `main`, `develop`)
-- **Failure Info**: Detailed information about what failed
-  - Lists the job names and specific steps that failed
-  - Example: `playwright: Run Playwright tests, Install dependencies`
-  - If no specific failure information is available, shows "No failure information available"
+- **Branch**: The source branch of the pull request (e.g., `feature-branch`)
+  - Note: This action is designed for pull request workflows and uses `github.head_ref`
+- **Failure Info**: Information about what failed
+  - If the `failure-info` input is provided, displays that custom message
+  - Otherwise, defaults to showing the job name (e.g., `Job: playwright`)
+  - Examples: `"Tests failed in playwright"`, `"Job: build"`, `"Step: Run Playwright tests failed"`
 - **Triggered by**: The GitHub username that triggered the workflow
 - **Workflow**: The name of the workflow that ran
 - **View Workflow Run** button: Links directly to the workflow run logs on GitHub
 
 ## Notes
 
+- **Designed for Pull Requests**: This action is specifically designed for pull request workflows and uses `github.head_ref` to display the PR source branch
 - The `if: failure()` condition ensures the notification is only sent when the workflow fails
 - You can use `if: always()` to send notifications regardless of workflow status
-- The action automatically fetches job and step failure information using the GitHub API
-- For pull requests, the branch shown is the source branch (head ref), not the merge branch
-- All GitHub context inputs are required to provide complete information in the notification
+- Optionally pass custom failure information using the `failure-info` input for more detailed context
 - The action uses curl to send the webhook request, which is available in all GitHub-hosted runners
 
 ## License
