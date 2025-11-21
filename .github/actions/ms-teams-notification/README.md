@@ -97,7 +97,7 @@ For Playwright tests, you can capture specific error messages using the `github`
   if: steps.playwright.outputs.exit_code != '0'
   run: |
     # Extract the first error annotation from the log
-    ERROR_MSG=$(grep "^::error" test.log | sed -E 's/^::error.*:://' | head -n 1)
+    ERROR_MSG=$(grep "^::error" test.log | sed -E 's/^::error[^:]*:://' | head -n 1)
     
     # Fallback if no error found
     if [ -z "$ERROR_MSG" ]; then
@@ -124,6 +124,7 @@ This approach:
 - Captures the test output with `tee` so it's both displayed and saved
 - Extracts the first error message from the annotations
 - Passes the specific error to the MS Teams notification
+- **Note**: Requires `shell: bash` for `PIPESTATUS` support (as shown in the example)
 
 ### Complete Workflow Example
 
