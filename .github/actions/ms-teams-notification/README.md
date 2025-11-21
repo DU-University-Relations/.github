@@ -5,7 +5,9 @@ A reusable GitHub Action to send adaptive card notifications to Microsoft Teams 
 ## Features
 
 - Sends rich adaptive card notifications to MS Teams
-- Automatically includes repository, branch, commit, actor, and workflow information from GitHub context
+- Automatically includes repository, branch, failure information, actor, and workflow details from GitHub context
+- Shows the actual source branch for pull requests (not the merge branch)
+- Provides detailed failure information including which jobs and steps failed
 - Provides direct link to the workflow run
 - Configurable title and webhook URL
 - Easy to integrate into existing workflows
@@ -165,10 +167,28 @@ The webhook URL should be stored as a secret in your repository or organization:
 4. Search for "Incoming Webhook"
 5. Configure the webhook and copy the URL
 
+## Notification Information
+
+The notification card includes the following information:
+
+- **Repository**: The repository where the workflow is running (e.g., `DU-University-Relations/drupal-composer-managed`)
+- **Branch**: The source branch of the pull request (for PRs) or the branch name (for push events)
+  - For pull requests, shows the actual PR branch (e.g., `feature-branch`) instead of the merge branch
+  - For direct pushes, shows the branch name (e.g., `main`, `develop`)
+- **Failure Info**: Detailed information about what failed
+  - Lists the job names and specific steps that failed
+  - Example: `playwright: Run Playwright tests, Install dependencies`
+  - If no specific failure information is available, shows "No failure information available"
+- **Triggered by**: The GitHub username that triggered the workflow
+- **Workflow**: The name of the workflow that ran
+- **View Workflow Run** button: Links directly to the workflow run logs on GitHub
+
 ## Notes
 
 - The `if: failure()` condition ensures the notification is only sent when the workflow fails
 - You can use `if: always()` to send notifications regardless of workflow status
+- The action automatically fetches job and step failure information using the GitHub API
+- For pull requests, the branch shown is the source branch (head ref), not the merge branch
 - All GitHub context inputs are required to provide complete information in the notification
 - The action uses curl to send the webhook request, which is available in all GitHub-hosted runners
 

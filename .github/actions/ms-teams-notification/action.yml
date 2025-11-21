@@ -17,12 +17,33 @@ runs:
     - name: Send MS Teams notification
       shell: bash
       run: |
+        # Determine the branch name (use head_ref for PRs, ref_name otherwise)
+        BRANCH="${{ github.head_ref }}"
+        if [ -z "$BRANCH" ]; then
+          BRANCH="${{ github.ref_name }}"
+        fi
+        
+        # Fetch job information to get failure details
+        FAILURE_INFO="No failure information available"
+        
+        # Use GitHub API to fetch job details
+        JOBS_RESPONSE=$(curl -s -H "Authorization: token ${{ github.token }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs")
+        
+        # Extract failed job and step information
+        FAILED_JOBS=$(echo "$JOBS_RESPONSE" | jq -r '.jobs[] | select(.conclusion == "failure") | "\(.name): " + ([.steps[] | select(.conclusion == "failure") | .name] | join(", "))')
+        
+        if [ -n "$FAILED_JOBS" ]; then
+          FAILURE_INFO="$FAILED_JOBS"
+        fi
+        
         # Create JSON payload using jq for proper escaping
         PAYLOAD=$(jq -n \
           --arg title "${{ inputs.title }}" \
           --arg repo "${{ github.repository }}" \
-          --arg branch "${{ github.ref_name }}" \
-          --arg sha "${{ github.sha }}" \
+          --arg branch "$BRANCH" \
+          --arg failure "$FAILURE_INFO" \
           --arg actor "${{ github.actor }}" \
           --arg workflow "${{ github.workflow }}" \
           --arg url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
@@ -54,8 +75,8 @@ runs:
                         "value": $branch
                       },
                       {
-                        "title": "Commit:",
-                        "value": $sha
+                        "title": "Failure Info:",
+                        "value": $failure
                       },
                       {
                         "title": "Triggered by:",
