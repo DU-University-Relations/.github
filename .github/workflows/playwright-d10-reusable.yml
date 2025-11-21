@@ -16,6 +16,10 @@ on:
         required: false
         type: string
         default: ''
+    secrets:
+      MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL:
+        description: 'MS Teams webhook URL for failure notifications'
+        required: true
 
 jobs:
   playwright:

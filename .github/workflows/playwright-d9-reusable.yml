@@ -20,6 +20,9 @@ on:
       D9_PROFILE_PAT:
         description: 'Personal access token for d9-composer-managed repository'
         required: true
+      MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL:
+        description: 'MS Teams webhook URL for failure notifications'
+        required: true
 
 jobs:
   playwright:
