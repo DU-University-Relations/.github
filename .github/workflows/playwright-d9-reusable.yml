@@ -133,7 +133,9 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Notify MS Teams on failure
-        if: steps.playwright.outputs.exit_code != '0' && secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL != ''
+        if: steps.playwright.outputs.exit_code != '0' && env.WEBHOOK_URL != ''
+        env:
+          WEBHOOK_URL: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
         uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
         with:
           webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
