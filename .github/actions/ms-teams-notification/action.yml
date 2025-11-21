@@ -31,11 +31,13 @@ runs:
           -H "Accept: application/vnd.github.v3+json" \
           "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs")
         
-        # Extract failed job and step information
-        FAILED_JOBS=$(echo "$JOBS_RESPONSE" | jq -r '.jobs[] | select(.conclusion == "failure") | "\(.name): " + ([.steps[] | select(.conclusion == "failure") | .name] | join(", "))')
-        
-        if [ -n "$FAILED_JOBS" ]; then
-          FAILURE_INFO="$FAILED_JOBS"
+        # Check if we got a valid response and extract failed job and step information
+        if [ -n "$JOBS_RESPONSE" ] && echo "$JOBS_RESPONSE" | jq -e '.jobs' >/dev/null 2>&1; then
+          FAILED_JOBS=$(echo "$JOBS_RESPONSE" | jq -r '.jobs[] | select(.conclusion == "failure") | "\(.name): " + ([.steps[] | select(.conclusion == "failure") | .name] | join(", "))')
+          
+          if [ -n "$FAILED_JOBS" ]; then
+            FAILURE_INFO="$FAILED_JOBS"
+          fi
         fi
         
         # Create JSON payload using jq for proper escaping
