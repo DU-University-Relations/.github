@@ -108,10 +108,12 @@ jobs:
           ERROR_LINE=$(grep "^::error" test.log | head -n 1)
           
           if [ -n "$ERROR_LINE" ]; then
-            # Try to extract with file pattern first
+            # Try to extract with file pattern first (format: ::error file=path,line=N::message)
+            # Extracts to: "path: message"
             ERROR_MSG=$(echo "$ERROR_LINE" | sed -E 's/^::error file=([^,]+).*::(.*)/\1: \2/')
             
             # If pattern didn't match (still starts with ::error), use simple extraction
+            # This handles format: ::error::message -> message
             if [[ "$ERROR_MSG" == "::error"* ]]; then
               ERROR_MSG=$(echo "$ERROR_LINE" | sed -E 's/^::error:://')
             fi
