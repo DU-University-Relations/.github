@@ -28,12 +28,16 @@ runs:
         
         # Use GitHub API to fetch job details
         JOBS_RESPONSE=$(curl -s -H "Authorization: token ${{ github.token }}" \
-          -H "Accept: application/vnd.github.v3+json" \
+          -H "Accept: application/vnd.github+json" \
           "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs")
         
         # Check if we got a valid response and extract failed job and step information
         if [ -n "$JOBS_RESPONSE" ] && echo "$JOBS_RESPONSE" | jq -e '.jobs' >/dev/null 2>&1; then
-          FAILED_JOBS=$(echo "$JOBS_RESPONSE" | jq -r '.jobs[] | select(.conclusion == "failure") | "\(.name): " + ([.steps[] | select(.conclusion == "failure") | .name] | join(", "))')
+          FAILED_JOBS=$(echo "$JOBS_RESPONSE" | jq -r '.jobs[] | select(.conclusion == "failure") | 
+            "\(.name): " + (
+              [.steps[] | select(.conclusion == "failure") | .name] | 
+              if length > 0 then join(", ") else "Job failed" end
+            )')
           
           if [ -n "$FAILED_JOBS" ]; then
             FAILURE_INFO="$FAILED_JOBS"
