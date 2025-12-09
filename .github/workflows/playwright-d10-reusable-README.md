@@ -25,6 +25,7 @@ Your repository must contain:
 1. A Drupal module with a valid `.info.yml` file
 2. Playwright tests in a `tests/` directory or compatible structure
 3. Access to the drupal-composer-managed repository
+4. Playwright configuration using Chromium browser (the workflow installs only Chromium to optimize CI performance)
 
 ## Usage
 
