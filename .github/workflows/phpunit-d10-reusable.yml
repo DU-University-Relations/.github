@@ -1,0 +1,102 @@
+name: Reusable PHPUnit Tests for D10
+
+on:
+  workflow_call:
+    inputs:
+      test_paths:
+        description: 'Space-separated list of paths to test (e.g., "web/profiles/custom web/modules/custom")'
+        required: true
+        type: string
+      phpunit_config:
+        description: 'Path to PHPUnit configuration file (e.g., "web/core/phpunit.xml.dist")'
+        required: false
+        type: string
+        default: 'web/core/phpunit.xml.dist'
+      enabled_modules:
+        description: 'Space-separated list of modules to enable before running tests (e.g., "du_example_module")'
+        required: false
+        type: string
+        default: ''
+      profile_ref:
+        description: 'Optional ref (branch/tag/SHA) of drupal-composer-managed to use'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL:
+        description: 'MS Teams webhook URL for failure notifications'
+        required: false
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout module
+        uses: actions/checkout@v4
+        with:
+          path: module
+
+      - name: Checkout Drupal upstream
+        uses: actions/checkout@v4
+        with:
+          repository: DU-University-Relations/drupal-composer-managed
+          path: upstream
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ inputs.profile_ref }}
+
+      - name: Setup DDEV
+        uses: ddev/github-action-setup-ddev@v1
+        with:
+          ddevDir: upstream
+
+      - name: Get module name from repository
+        id: module_info
+        run: |
+          MODULE_NAME=$(basename ${{ github.repository }})
+          echo "module_name=$MODULE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Copy module to upstream
+        run: |
+          DEST_MODULE_DIR="$GITHUB_WORKSPACE/upstream/web/modules/packages/${{ steps.module_info.outputs.module_name }}"
+          mkdir -p "$DEST_MODULE_DIR"
+          cp -r "$GITHUB_WORKSPACE/module/"* "$DEST_MODULE_DIR/"
+
+      - name: Validate composer.json and composer.lock
+        working-directory: upstream
+        run: ddev composer validate --strict
+
+      - name: Cache Composer packages
+        id: composer-cache
+        uses: actions/cache@v3
+        with:
+          path: upstream/vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('upstream/**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-
+
+      - name: Install PHP dependencies
+        working-directory: upstream
+        run: ddev composer install --no-interaction --no-progress --prefer-dist --ansi
+
+      - name: Install Drupal using ducore profile
+        working-directory: upstream
+        run: ddev drush si ducore -y
+
+      - name: Enable modules
+        if: inputs.enabled_modules != ''
+        working-directory: upstream
+        run: ddev drush en ${{ inputs.enabled_modules }} -y
+
+      - name: Run PHPUnit tests
+        working-directory: upstream
+        run: |
+          ddev exec vendor/bin/phpunit -c ${{ inputs.phpunit_config }} ${{ inputs.test_paths }}
+
+      - name: Notify MS Teams on failure
+        if: failure() && env.WEBHOOK_URL != ''
+        env:
+          WEBHOOK_URL: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
+        uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
+        with:
+          webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
