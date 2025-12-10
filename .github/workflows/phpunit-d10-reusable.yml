@@ -12,11 +12,6 @@ on:
         required: false
         type: string
         default: 'web/core/phpunit.xml.dist'
-      enabled_modules:
-        description: 'Space-separated list of modules to enable before running tests (e.g., "du_example_module")'
-        required: false
-        type: string
-        default: ''
       profile_ref:
         description: 'Optional ref (branch/tag/SHA) of drupal-composer-managed to use'
         required: false
@@ -80,15 +75,6 @@ jobs:
       - name: Install PHP dependencies
         working-directory: upstream
         run: ddev composer install --no-interaction --no-progress --prefer-dist --ansi
-
-      - name: Install Drupal using ducore profile
-        working-directory: upstream
-        run: ddev drush si ducore -y
-
-      - name: Enable modules
-        if: inputs.enabled_modules != ''
-        working-directory: upstream
-        run: ddev drush en ${{ inputs.enabled_modules }} -y
 
       - name: Run PHPUnit tests
         working-directory: upstream

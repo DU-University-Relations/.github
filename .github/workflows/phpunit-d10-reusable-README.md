@@ -8,7 +8,6 @@ A reusable GitHub Actions workflow for running PHPUnit tests against Drupal 10 m
 |-------|-------------|----------|---------|
 | `test_paths` | Space-separated list of paths to test (e.g., "web/profiles/custom web/modules/custom") | Yes | - |
 | `phpunit_config` | Path to PHPUnit configuration file (e.g., "web/core/phpunit.xml.dist") | No | `web/core/phpunit.xml.dist` |
-| `enabled_modules` | Space-separated list of modules to enable before running tests (e.g., "du_example_module") | No | `''` |
 | `profile_ref` | Optional ref (branch/tag/SHA) of drupal-composer-managed to use | No | `''` (default branch) |
 
 ## Secrets
@@ -45,19 +44,6 @@ jobs:
       test_paths: 'web/profiles/custom web/modules/custom'
     secrets:
       MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
-```
-
-### With Module Enablement
-
-Enable specific modules before running tests:
-
-```yaml
-jobs:
-  test-d10:
-    uses: DU-University-Relations/.github/.github/workflows/phpunit-d10-reusable.yml@main
-    with:
-      test_paths: 'web/modules/packages/du_example_module'
-      enabled_modules: 'du_example_module du_dependency_module'
 ```
 
 ### Custom PHPUnit Configuration
@@ -107,10 +93,8 @@ The `test_paths` input should point to directories containing PHPUnit tests. Com
 2. **Copy**: Your module is copied to `upstream/web/modules/packages/[module-name]`
 3. **Setup**: DDEV is configured and Composer dependencies are installed with caching
 4. **Validation**: composer.json and composer.lock are validated
-5. **Install**: Drupal is installed using the ducore profile
-6. **Enable**: Any specified modules are enabled via Drush
-7. **Test**: PHPUnit tests are executed from the specified paths
-8. **Notify**: On failure, an optional MS Teams notification is sent
+5. **Test**: PHPUnit tests are executed from the specified paths (PHPUnit handles its own database and Drupal bootstrap as needed)
+6. **Notify**: On failure, an optional MS Teams notification is sent
 
 ## Related Resources
 
