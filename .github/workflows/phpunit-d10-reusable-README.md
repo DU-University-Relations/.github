@@ -90,7 +90,7 @@ The `test_paths` input should point to directories containing PHPUnit tests. Com
 ## How It Works
 
 1. **Checkout**: The workflow checks out your module into a `module` directory and the drupal-composer-managed upstream into an `upstream` directory
-2. **Setup PHP**: PHP 8.1 is configured with necessary extensions (gd, pdo_mysql)
+2. **Setup PHP**: PHP 8.2 is configured with necessary extensions (gd, pdo_mysql)
 3. **Copy**: Your module is copied to `upstream/web/modules/packages/[module-name]`
 4. **Validation**: composer.json and composer.lock are validated
 5. **Install**: Composer dependencies are installed with caching for faster subsequent runs
