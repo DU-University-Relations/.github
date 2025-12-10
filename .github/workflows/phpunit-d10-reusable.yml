@@ -42,10 +42,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ inputs.profile_ref }}
 
-      - name: Setup DDEV
-        uses: ddev/github-action-setup-ddev@v1
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
-          ddevDir: upstream
+          php-version: '8.1'
+          extensions: gd, pdo_mysql
+          coverage: none
 
       - name: Get module name from repository
         id: module_info
@@ -61,7 +63,7 @@ jobs:
 
       - name: Validate composer.json and composer.lock
         working-directory: upstream
-        run: ddev composer validate --strict
+        run: composer validate --strict
 
       - name: Cache Composer packages
         id: composer-cache
@@ -74,12 +76,12 @@ jobs:
 
       - name: Install PHP dependencies
         working-directory: upstream
-        run: ddev composer install --no-interaction --no-progress --prefer-dist --ansi
+        run: composer install --no-interaction --no-progress --prefer-dist --ansi
 
       - name: Run PHPUnit tests
         working-directory: upstream
         run: |
-          ddev exec vendor/bin/phpunit -c ${{ inputs.phpunit_config }} ${{ inputs.test_paths }}
+          vendor/bin/phpunit -c ${{ inputs.phpunit_config }} ${{ inputs.test_paths }}
 
       - name: Notify MS Teams on failure
         if: failure() && env.WEBHOOK_URL != ''

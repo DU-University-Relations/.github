@@ -1,6 +1,6 @@
 # PHPUnit D9 Reusable Workflow
 
-A reusable GitHub Actions workflow for running PHPUnit tests against Drupal 9 modules. This workflow sets up a complete Drupal 9 environment using DDEV, installs your module, and runs PHPUnit tests with configurable test paths and PHPUnit configuration.
+A reusable GitHub Actions workflow for running PHPUnit tests against Drupal 9 modules. This workflow sets up PHP and Composer dependencies, installs your module into the Drupal upstream, and runs PHPUnit tests with configurable test paths and PHPUnit configuration.
 
 ## Inputs
 
@@ -102,11 +102,12 @@ The `test_paths` input should point to directories containing PHPUnit tests. Com
 ## How It Works
 
 1. **Checkout**: The workflow checks out your module into a `module` directory and the d9-composer-managed upstream into an `upstream` directory
-2. **Copy**: Your module is copied to `upstream/web/modules/packages/[module-name]`
-3. **Setup**: DDEV is configured and Composer dependencies are installed with caching
+2. **Setup PHP**: PHP 8.1 is configured with necessary extensions (gd, pdo_mysql)
+3. **Copy**: Your module is copied to `upstream/web/modules/packages/[module-name]`
 4. **Validation**: composer.json and composer.lock are validated
-5. **Test**: PHPUnit tests are executed from the specified paths (PHPUnit handles its own database and Drupal bootstrap as needed)
-6. **Notify**: On failure, an optional MS Teams notification is sent
+5. **Install**: Composer dependencies are installed with caching for faster subsequent runs
+6. **Test**: PHPUnit tests are executed from the specified paths (PHPUnit handles its own database and Drupal bootstrap as needed)
+7. **Notify**: On failure, an optional MS Teams notification is sent
 
 ## Related Resources
 
