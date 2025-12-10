@@ -75,6 +75,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-php-
 
+      - name: Configure Composer to allow plugins
+        working-directory: upstream
+        run: composer config --no-plugins allow-plugins.simplesamlphp/composer-xmlprovider-installer true
+
       - name: Install PHP dependencies
         working-directory: upstream
         run: composer install --no-interaction --no-progress --prefer-dist --ansi
