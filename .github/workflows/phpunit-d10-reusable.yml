@@ -26,6 +26,8 @@ on:
       MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL:
         description: 'MS Teams webhook URL for failure notifications'
         required: false
+      # Note: D10 uses GITHUB_TOKEN for upstream access (drupal-composer-managed is public)
+      # D9 requires D9_PROFILE_PAT because d9-composer-managed is private
 
 jobs:
   phpunit:
