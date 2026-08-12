@@ -1,0 +1,129 @@
+name: Reusable D10 Package Validation
+
+on:
+  workflow_call:
+    inputs:
+      enabled_modules:
+        description: 'Space-separated package modules to enable (for example, "du_livewhale_events")'
+        required: true
+        type: string
+      phpunit_paths:
+        description: 'Space-separated package paths or PHPUnit arguments; leave empty when the package has no PHPUnit tests'
+        required: false
+        type: string
+        default: ''
+      profile_ref:
+        description: 'Optional branch, tag, or SHA of d10-composer-managed'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      D10_PROFILE_PAT:
+        description: 'Personal access token with read access to d10-composer-managed'
+        required: true
+      MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL:
+        description: 'MS Teams webhook URL for failure notifications'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Install, test, and validate
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Validate workflow inputs
+        env:
+          ENABLED_MODULES: ${{ inputs.enabled_modules }}
+        run: |
+          if [[ -z "${ENABLED_MODULES//[[:space:]]/}" ]]; then
+            echo "enabled_modules must contain at least one module name"
+            exit 1
+          fi
+
+      - name: Checkout package
+        uses: actions/checkout@v4
+        with:
+          path: package
+
+      - name: Checkout D10 upstream
+        uses: actions/checkout@v4
+        with:
+          repository: DU-University-Relations/d10-composer-managed
+          path: upstream
+          token: ${{ secrets.D10_PROFILE_PAT }}
+          ref: ${{ inputs.profile_ref || 'main' }}
+          persist-credentials: false
+
+      - name: Determine package name
+        id: package
+        run: |
+          package_name="${GITHUB_REPOSITORY##*/}"
+          echo "name=$package_name" >> "$GITHUB_OUTPUT"
+
+      - name: Copy package into upstream
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+        run: |
+          destination="$GITHUB_WORKSPACE/upstream/web/modules/packages/$PACKAGE_NAME"
+          mkdir -p "$destination"
+          rsync -a --exclude='.git/' "$GITHUB_WORKSPACE/package/" "$destination/"
+
+      - name: Setup DDEV
+        uses: ddev/github-action-setup-ddev@v1
+        with:
+          ddevDir: upstream
+
+      - name: Validate Composer configuration
+        working-directory: upstream
+        run: ddev composer validate --strict
+
+      - name: Install D10 profile
+        working-directory: upstream
+        run: bash scripts/bootstrap-ci.sh
+
+      - name: Enable package modules
+        working-directory: upstream
+        env:
+          ENABLED_MODULES: ${{ inputs.enabled_modules }}
+        run: |
+          read -r -a modules <<< "$ENABLED_MODULES"
+          ddev drush en "${modules[@]}" -y
+
+      - name: Smoke test Drush commands
+        working-directory: upstream
+        run: |
+          ddev drush core:status
+          ddev drush config:get core.extension profile
+          ddev drush updatedb:status
+          ddev drush cache:rebuild
+          ddev drush cron -v
+          ddev drush uli --name="qa_administrator" --no-browser
+
+      - name: Verify package test discovery
+        if: ${{ inputs.phpunit_paths != '' }}
+        working-directory: upstream
+        env:
+          PHPUNIT_PATHS: ${{ inputs.phpunit_paths }}
+        run: |
+          read -r -a test_paths <<< "$PHPUNIT_PATHS"
+          ddev phpunit --list-tests "${test_paths[@]}"
+
+      - name: Run package PHPUnit tests
+        if: ${{ inputs.phpunit_paths != '' }}
+        working-directory: upstream
+        env:
+          PHPUNIT_PATHS: ${{ inputs.phpunit_paths }}
+        run: |
+          read -r -a test_paths <<< "$PHPUNIT_PATHS"
+          ddev phpunit "${test_paths[@]}"
+
+      - name: Notify MS Teams on failure
+        if: failure() && env.WEBHOOK_URL != ''
+        env:
+          WEBHOOK_URL: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
+        uses: DU-University-Relations/.github/.github/actions/ms-teams-notification@main
+        with:
+          webhook-url: ${{ secrets.MS_TEAMS_FAILED_TEST_RUN_WEBHOOK_URL }}
